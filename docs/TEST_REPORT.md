@@ -459,3 +459,36 @@ blocked**, not runtime PASS and not a robot-source failure. The same command
 must be rerun from the normal desktop terminal; successful Nav2 runtime
 acceptance criteria remain `/scan`, full TF chain, active lifecycle/costmaps
 and a completed `check_nav2_goal.py` goal as documented above.
+
+### One-file bootstrap launcher regression — 2026-08-24
+
+Đã thêm `START_OPENARM.sh` làm file bootstrap độc lập. Khi nằm ngoài
+repository, file clone nhánh `main` chính thức vào
+`~/openarm_skeleton_v1.2_ws`; khi nằm trong workspace, file dùng chính
+workspace đó. Update chỉ dùng `fetch` và `merge --ff-only`, đồng thời tự bỏ
+qua bước update nếu working tree có thay đổi để không ghi đè source local.
+
+Chuỗi launcher đã được khóa bằng contract test: kiểm tra executable bit, chạy
+`bash -n`, và xác nhận đủ các bước clone, dependency installer, `rosdep`, build
+cùng `run_nav2_sim.sh`. Lệnh regression:
+
+```bash
+bash -n START_OPENARM.sh
+./START_OPENARM.sh --help
+source /opt/ros/jazzy/setup.bash
+./scripts/build_workspace.sh
+source install/setup.bash
+colcon test --event-handlers console_direct+
+colcon test-result --verbose
+```
+
+```text
+Build: 3 packages finished
+Tests: 29 tests, 0 errors, 0 failures, 0 skipped
+START_OPENARM.sh syntax/help/contract: PASS
+```
+
+Không chạy full GUI runtime từ coding sandbox trong mục này vì giới hạn socket
+đã ghi ở mục all-in-one ngay phía trên. Launcher cuối cùng gọi đúng
+`run_nav2_sim.sh`; runtime desktop của launch stack bên dưới vẫn dùng acceptance
+SLAM/Nav2 đã ghi trong báo cáo này.

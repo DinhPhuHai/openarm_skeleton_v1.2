@@ -95,6 +95,34 @@ Watchdog phát lệnh dừng nếu mất command quá 0,5 giây.
 
 ## 5. Nav2 + SLAM
 
+### Một file tự tải, build và chạy toàn bộ
+
+File `START_OPENARM.sh` dùng cho demo một-chạm trên Ubuntu 24.04. Có thể đặt
+riêng file này ở máy mới; lần chạy đầu nó tự clone nhánh `main` từ GitHub vào
+`~/openarm_skeleton_v1.2_ws`, kiểm tra/cài ROS 2 Jazzy và dependency, build,
+source môi trường rồi mở Gazebo, robot, SLAM, Nav2 và RViz:
+
+```bash
+chmod +x START_OPENARM.sh
+./START_OPENARM.sh
+```
+
+Nếu double-click từ file manager, launcher sẽ tự mở một Terminal để hiển thị
+tiến trình và nơi xảy ra lỗi. Những lần sau nó dùng `git fetch` và chỉ cập nhật
+fast-forward khi source local sạch. Nếu có file đang sửa hoặc commit local,
+launcher không ghi đè mà giữ source hiện tại để build/chạy. Có thể đổi nơi tải
+workspace hoặc truyền launch argument:
+
+```bash
+OPENARM_WORKSPACE_DIR="$HOME/demo/openarm_ws" ./START_OPENARM.sh
+./START_OPENARM.sh headless:=true use_rviz:=false
+```
+
+Việc `source` chỉ áp dụng cho tiến trình launcher và các node được nó mở; file
+không chỉnh sửa vĩnh viễn `.bashrc` của người dùng.
+
+### Chạy từ workspace đã có
+
 Khởi động hotel world, lidar, SLAM Toolbox, Nav2 và RViz:
 
 ```bash
@@ -187,7 +215,7 @@ colcon test --event-handlers console_direct+
 colcon test-result --verbose
 ```
 
-Kết quả regression mới nhất ngày 2026-08-24: 3 package build thành công, 28
+Kết quả regression mới nhất ngày 2026-08-24: 3 package build thành công, 29
 test, 0 lỗi. Hotel route, skeleton demo và Nav2 goal runtime gần nhất đều PASS;
 xem ngày và lệnh chính xác trong `docs/TEST_REPORT.md`.
 

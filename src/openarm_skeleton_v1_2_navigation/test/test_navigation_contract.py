@@ -2,6 +2,7 @@
 
 import ast
 from pathlib import Path
+import subprocess
 
 import yaml
 
@@ -12,6 +13,7 @@ NAVIGATION_LAUNCH = PACKAGE / "launch" / "navigation.launch.py"
 SIM_LAUNCH = PACKAGE / "launch" / "nav2_sim.launch.py"
 ALL_IN_ONE_LAUNCH = PACKAGE / "launch" / "all_in_one.launch.py"
 RUN_NAV2 = PACKAGE.parents[1] / "scripts" / "run_nav2_sim.sh"
+ONE_FILE_LAUNCHER = PACKAGE.parents[1] / "START_OPENARM.sh"
 GOAL_CHECK = PACKAGE / "scripts" / "check_nav2_goal.py"
 RVIZ_CONFIG = PACKAGE / "config" / "nav2_openarm_view.rviz"
 SMOOTHED_NAV_BT = (
@@ -92,6 +94,19 @@ def test_all_in_one_is_the_public_complete_stack_entry_point():
         assert f'LaunchConfiguration("{argument}")' in launch
     assert "all_in_one.launch.py" in runner
     assert "nav2_sim.launch.py" not in runner
+
+
+def test_one_file_launcher_bootstraps_builds_and_runs_the_complete_stack():
+    launcher = ONE_FILE_LAUNCHER.read_text(encoding="utf-8")
+    assert ONE_FILE_LAUNCHER.stat().st_mode & 0o111
+    subprocess.run(["bash", "-n", ONE_FILE_LAUNCHER], check=True)
+    assert "DinhPhuHai/openarm_skeleton_v1.2.git" in launcher
+    assert 'git clone --branch "$REPOSITORY_BRANCH"' in launcher
+    assert 'merge --ff-only "origin/$REPOSITORY_BRANCH"' in launcher
+    assert "install_jazzy_dependencies.sh" in launcher
+    assert "rosdep install --from-paths" in launcher
+    assert "build_workspace.sh" in launcher
+    assert "run_nav2_sim.sh" in launcher
 
 
 def test_sim_launch_gives_gazebo_time_to_load_robot_visual():

@@ -11,6 +11,21 @@ Xem lệnh cấu hình ROS apt repository và cài package trong `README.md`.
 
 ## 2. Build sạch
 
+### Demo một-chạm
+
+Trên Ubuntu 24.04, chạy file duy nhất ở thư mục gốc để tự tải/cập nhật source,
+cài dependency còn thiếu, build, source và mở toàn bộ stack:
+
+```bash
+./START_OPENARM.sh
+```
+
+Launcher không ghi đè working tree có thay đổi local và không dùng force-pull.
+Khi được đặt ngoài repository trên máy mới, source mặc định được clone vào
+`~/openarm_skeleton_v1.2_ws`.
+
+### Build thủ công
+
 Không dùng artifact Humble cũ.
 
 ```bash
