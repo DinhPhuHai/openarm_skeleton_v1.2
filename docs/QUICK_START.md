@@ -141,3 +141,21 @@ và watchdog đều được kiểm tra.
 Lidar trong profile simulation có dead zone 0,35 m và được đặt ở giữa/phía
 trên base để loại self-return từ mesh. Khi chuyển sang hardware phải thay bằng
 transform đã đo và cấu hình filter của lidar thật.
+
+## 8. Isaac Sim 5.0
+
+Sau khi cài bundle standalone vào `~/isaacsim`:
+
+```bash
+export ISAAC_SIM_PATH="$HOME/isaacsim"
+./scripts/check_isaac_host.sh
+./scripts/run_isaac_nav2.sh
+```
+
+Launch tự chờ `/clock`, `/scan`, `/odom`, `/joint_states` và TF rồi mới bật
+SLAM/Nav2. Hướng dẫn cài và acceptance đầy đủ ở `docs/ISAAC_SIM.md`. Máy 16 GB
+RAM thấp hơn yêu cầu 32 GB của NVIDIA; nếu GUI thiếu bộ nhớ, thử:
+
+```bash
+./scripts/run_isaac_nav2.sh headless:=true use_rviz:=false
+```

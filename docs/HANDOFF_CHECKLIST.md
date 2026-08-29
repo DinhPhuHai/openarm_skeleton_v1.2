@@ -2,7 +2,7 @@
 
 ## Người đóng gói
 
-- [ ] `./scripts/build_workspace.sh` hoàn tất 3 package.
+- [ ] `./scripts/build_workspace.sh` hoàn tất 4 package.
 - [ ] `colcon test-result --verbose` báo 0 lỗi.
 - [ ] Hotel headless có dòng `INDOOR ROUTE PASS`.
 - [ ] Skeleton demo có dòng `Skeleton lift demo PASS`.
@@ -24,11 +24,13 @@
 - [ ] Chạy `./scripts/run_nav2_sim.sh` và xác nhận SLAM/costmap hoạt động.
 - [ ] `check_nav2_goal.py` báo PASS và `odom_motion` lớn hơn 0,25 m.
 - [ ] Không source một OpenArm workspace cũ trong cùng terminal.
+- [ ] Nếu dùng Isaac: cài 5.0, đặt `ISAAC_SIM_PATH`, chạy
+  `check_isaac_runtime.py` và nhận PASS.
 
 ## Kết quả bàn giao chuẩn
 
 ```text
-Build: 3 packages finished
+Build: 4 packages finished
 Tests: 0 errors, 0 failures
 Hotel: INDOOR ROUTE PASS
 Skeleton: Skeleton lift demo PASS

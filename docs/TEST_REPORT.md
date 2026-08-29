@@ -492,3 +492,79 @@ Không chạy full GUI runtime từ coding sandbox trong mục này vì giới h
 đã ghi ở mục all-in-one ngay phía trên. Launcher cuối cùng gọi đúng
 `run_nav2_sim.sh`; runtime desktop của launch stack bên dưới vẫn dùng acceptance
 SLAM/Nav2 đã ghi trong báo cáo này.
+
+### Isaac Sim 5.0 integration — 2026-08-29
+
+Host được kiểm tra trước khi tích hợp:
+
+```text
+OS: Ubuntu 24.04.4 LTS
+GPU: NVIDIA GeForce RTX 4060 Max-Q / Mobile
+NVIDIA kernel module: 595.84
+RAM: khoảng 16 GB; swap: 4 GB
+Disk trống: hơn 230 GB
+Isaac Sim standalone/Python package: không tìm thấy
+```
+
+Ubuntu 24.04 và Jazzy đúng ma trận hỗ trợ Isaac Sim 5.0. Tuy nhiên 16 GB RAM
+thấp hơn mức tối thiểu 32 GB NVIDIA công bố; vì thế source chỉ tạo room
+primitive nhẹ, một robot và một RTX lidar. Không dùng warehouse/texture/camera.
+
+Đã thêm package `openarm_skeleton_v1_2_isaac` với các contract sau:
+
+- chuẩn bị URDF riêng: bỏ mọi tag Gazebo, resolve đủ 34 STL thành path tuyệt
+  đối và thêm inertia cực nhỏ cho ba frame-only link;
+- chỉ sáu joint mobile-base được phép movable; bốn caster được release passive;
+- differential controller dùng `drive_joint_1`, `drive_joint_2`, wheel radius
+  `0.03810 m` và wheel distance `0.45 m`;
+- Isaac chỉ subscribe `/cmd_vel_safe`, phía trước vẫn là watchdog wall-time
+  0,5 giây;
+- RTX lidar dùng profile 2D `Example_Rotary_2D`; xuất `/clock`, `/scan`,
+  `/odom`, `/joint_states` và
+  `odom -> base_footprint`; `robot_state_publisher` hoàn thiện phần TF robot;
+- readiness checker phải thấy đủ topic cùng TF
+  `odom -> base_footprint -> base_link -> base_scan` trước khi mở SLAM/Nav2;
+- tiến trình Isaac loại ROS Jazzy Python 3.12 khỏi environment để dùng ROS
+  Jazzy/Python 3.11 nội bộ của Isaac, giao tiếp với node ngoài bằng Fast DDS.
+
+Build và full regression:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+./scripts/build_workspace.sh
+source install/setup.bash
+colcon test --event-handlers console_direct+
+colcon test-result --verbose
+```
+
+```text
+Build: 4 packages finished
+Tests: 36 tests, 0 errors, 0 failures, 0 skipped
+Isaac contract tests: 6 passed
+```
+
+ROS launch được smoke-test không có simulator với timeout 1 giây. RSP và
+watchdog khởi động đúng; checker báo chính xác thiếu bốn topic Isaac rồi launch
+dừng sạch, không xảy ra lỗi shutdown adapter. Thử path bundle không hợp lệ trả
+ngay lỗi có hướng dẫn:
+
+```text
+Isaac Sim python.sh not found. Set
+isaac_sim_path:=/absolute/path/to/isaac-sim-5.0.0
+```
+
+Full Isaac GUI/headless runtime chưa được chạy vì bundle chưa được cài trên
+máy và coding sandbox không truy cập được GPU/DDS socket (`nvidia-smi` không
+communicate được với driver; DDS báo `Operation not permitted`). Trạng thái là
+**environment blocked**, không phải runtime PASS. Sau khi người dùng tải
+standalone 5.0, acceptance còn lại phải chạy trong desktop terminal:
+
+```bash
+export ISAAC_SIM_PATH="$HOME/isaacsim"
+./scripts/check_isaac_host.sh
+./scripts/run_isaac_nav2.sh
+```
+
+PASS cuối yêu cầu log `OPENARM ISAAC READY`, readiness checker PASS, robot
+render đúng, command thẳng/quay đúng dấu, watchdog dừng robot, SLAM map ổn
+định và `check_nav2_goal.py` thành công.

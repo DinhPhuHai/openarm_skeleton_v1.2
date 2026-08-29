@@ -1,8 +1,8 @@
-# OpenArm Skeleton v1.2 — ROS 2 Jazzy / Nav2
+# OpenArm Skeleton v1.2 — ROS 2 Jazzy / Nav2 / Isaac Sim
 
 Workspace tự chứa cho robot `OpenArm Skeleton v1.2`, gồm URDF, 34 mesh STL,
-Gazebo Harmonic, lidar mô phỏng và bringup Nav2. Không source hoặc dùng package
-từ `sim-workspace`.
+Gazebo Harmonic, Isaac Sim 5.0, lidar mô phỏng và bringup Nav2. Không source
+hoặc dùng package từ `sim-workspace`.
 
 ## 1. Nền tảng
 
@@ -206,7 +206,26 @@ trong simulation trống; nếu có vật cản thì Nav2 phải được phép 
 Acceptance trong `docs/TEST_REPORT.md` còn đối chiếu riêng pose vật lý trực tiếp
 từ Gazebo để tránh trường hợp odometry tự báo đúng nhưng chassis đi sai.
 
-## 6. Kiểm thử
+## 6. Isaac Sim 5.0 + Nav2
+
+Máy đã được kiểm tra có Ubuntu 24.04, RTX 4060 Laptop và driver NVIDIA 595.84,
+nhưng hiện chưa cài Isaac Sim và RAM khoảng 16 GB thấp hơn mức tối thiểu 32 GB
+NVIDIA công bố. Package riêng dùng scene nhẹ và không thay đổi Gazebo stack.
+
+Sau khi tải/cài Isaac Sim 5.0 standalone vào `~/isaacsim`:
+
+```bash
+export ISAAC_SIM_PATH="$HOME/isaacsim"
+./scripts/check_isaac_host.sh
+./scripts/run_isaac_nav2.sh
+```
+
+Đây là wrapper cho một launch duy nhất `isaac_nav2.launch.py`. Launch tự import
+robot, tạo room/lidar, mở watchdog, xác minh topic/TF rồi mới khởi động
+SLAM/Nav2/RViz. Xem hướng dẫn cài, test và troubleshooting đầy đủ tại
+`docs/ISAAC_SIM.md`.
+
+## 7. Kiểm thử
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -215,33 +234,36 @@ colcon test --event-handlers console_direct+
 colcon test-result --verbose
 ```
 
-Kết quả regression mới nhất ngày 2026-08-24: 3 package build thành công, 29
-test, 0 lỗi. Hotel route, skeleton demo và Nav2 goal runtime gần nhất đều PASS;
-xem ngày và lệnh chính xác trong `docs/TEST_REPORT.md`.
+Kết quả regression mới nhất ngày 2026-08-29: 4 package build thành công, 36
+test, 0 lỗi. Isaac runtime chưa thể chạy vì máy chưa cài bundle; đây là
+**environment blocked**, không được ghi là runtime PASS. Gazebo/Nav2 runtime
+gần nhất vẫn PASS; xem chi tiết trong `docs/TEST_REPORT.md`.
 
-## 7. Topic và frame contract
+## 8. Topic và frame contract
 
 | Topic/frame | Hướng | Ý nghĩa |
 |---|---|---|
 | `/cmd_vel_nav` | Nav2 internal | Command trước velocity smoother |
 | `/cmd_vel` | ROS → watchdog | Command public đã được Nav2 smooth |
-| `/cmd_vel_safe` | watchdog → Gazebo | Command có timeout stop |
-| `/scan` (`base_scan`) | Gazebo → ROS | Lidar 2D, 720 mẫu, 10 Hz, 0.35–20 m |
-| `/odom` | Gazebo → ROS | Odometry và velocity feedback |
+| `/cmd_vel_safe` | watchdog → simulator | Command có timeout stop |
+| `/scan` (`base_scan`) | simulator → ROS | Lidar navigation 2D |
+| `/odom` | simulator → ROS | Odometry và velocity feedback |
 | `map -> odom` | SLAM/AMCL | Global localization transform |
-| `odom -> base_footprint` | Gazebo | Local odometry transform |
+| `odom -> base_footprint` | simulator | Local odometry transform |
 
-## 8. Thành phần workspace
+## 9. Thành phần workspace
 
 - `openarm_skeleton_v1_2_description`: URDF, mesh, RViz và profile simulation.
 - `openarm_skeleton_v1_2_gazebo`: Gazebo Harmonic, bridge, spawner, watchdog,
   hotel world và route demo.
 - `openarm_skeleton_v1_2_navigation`: Nav2, SLAM/localization, footprint và
   costmap configuration.
+- `openarm_skeleton_v1_2_isaac`: Isaac Sim 5.0 scene/importer, ROS bridge,
+  readiness checker và all-in-one launch.
 - `tools/prepare_model.py`: tái tạo URDF; thay đổi Gazebo/lidar phải sửa tại đây
   rồi chạy lại script.
 
-## 9. Ranh giới an toàn
+## 10. Ranh giới an toàn
 
 - `/cmd_vel` luôn phải qua wall-time watchdog.
 - Hotel/Nav2 profile chỉ cho phép sáu khớp mobile base chuyển động.
