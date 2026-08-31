@@ -687,9 +687,12 @@ Bản sửa giữ cấu hình Gazebo `CLOSED_LOOP`, nhưng launch Isaac override
 sang `OPEN_LOOP`; tăng wheel-drive damping lên `1.0e5` với max force vẫn giới
 hạn ở `30`; đổi odometry gốc thành `/isaac_odom_raw` rồi suy ra planar twist từ
 pose/simulation time; và thêm conditioner sau watchdog để nâng lệnh quay khác
-zero lên tối thiểu `0.15 rad/s`. Zero không bị thay đổi nên timeout safety vẫn
+zero lên tối thiểu `0.25 rad/s` (`0.15` vẫn stall trong GUI dù headless PASS).
+Zero không bị thay đổi nên timeout safety vẫn
 dừng robot. Navigation được trì hoãn 3 giây sau SLAM để tránh lifecycle service
-timeout khi CPU đang tải RTX.
+timeout khi CPU đang tải RTX. Kiểm tra GUI sau đó cho thấy RViz mở ở giây thứ
+5 vẫn có thể làm timeout `smoother_server/change_state`, nên RViz được dời tới
+giây thứ 15; người dùng chỉ gửi goal sau `Managed nodes are active`.
 
 Runtime acceptance cuối chạy Isaac headless, Fast DDS domain 152. Goal buộc
 robot đổi hướng 90 độ rồi đi sang bên hông:
@@ -720,3 +723,18 @@ Tests: 40 tests, 0 errors, 0 failures, 0 skipped
 Navigation contract: 8 passed
 Isaac contract: 10 passed
 ```
+
+GUI retest sau phản hồi vận tốc quay vẫn stall:
+
+- xóa các node test mồ côi ở ROS domain 151/152 trước khi mở phiên mới;
+- tăng minimum angular conditioner từ `0.15` lên `0.25 rad/s`;
+- dời RViz từ giây 5 tới giây 15. Trước thay đổi, RViz tải đồng thời làm
+  `smoother_server/change_state` timeout và action server không xuất hiện;
+- phiên mới đạt `Managed nodes are active` trước khi RViz mở;
+- `/spin` 0.8 rad hoàn thành `SUCCEEDED` trong GUI;
+- goal lệch 90 độ `(0.0, 0.60)` hoàn thành `SUCCEEDED`, final odom
+  `(0.0027, 0.6158)`.
+
+Log phiên lỗi cũng ghi nhiều `Received goal preemption request`: nhấn goal mới
+trước khi goal cũ hoàn thành sẽ chủ động hủy hướng cũ. Khi demo, chỉ gửi một
+goal và chờ trạng thái `SUCCEEDED` hoặc `FAILED` trước goal tiếp theo.

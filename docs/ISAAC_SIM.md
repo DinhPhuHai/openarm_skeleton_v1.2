@@ -88,8 +88,10 @@ Launch thực hiện theo thứ tự:
 5. chỉ khi checker PASS mới khởi động SLAM Toolbox, Nav2 và RViz.
 
 Trong terminal cần thấy `OPENARM ISAAC READY`, sau đó
-`PASS: Isaac topics and TF contract are ready for SLAM/Nav2`. Khi RViz mở,
-di chuyển robot để tạo map rồi gửi `Nav2 Goal` như với Gazebo.
+`PASS: Isaac topics and TF contract are ready for SLAM/Nav2` và
+`Managed nodes are active`. RViz được mở trễ 15 giây để không làm timeout
+lifecycle trên máy 16 GB. Chỉ gửi `Nav2 Goal` sau marker active; mỗi lần gửi
+một goal và chờ robot hoàn thành trước khi chọn goal tiếp theo.
 
 Headless:
 
@@ -122,7 +124,8 @@ robot_state_publisher -> base_footprint -> base_link -> base_scan -> robot
 Isaac không subscribe trực tiếp `/cmd_vel`. Nếu Nav2 hoặc teleop chết, watchdog
 vẫn phát zero sau 0,5 giây. Hai drive joint dùng bán kính bánh `0.03810 m`,
 khoảng cách bánh `0.45 m`; bốn caster joint được giữ passive. Lệnh quay khác
-zero nhưng nhỏ hơn `0.15 rad/s` được nâng tới ngưỡng này để thắng ma sát tĩnh;
+zero nhưng nhỏ hơn `0.25 rad/s` được nâng tới ngưỡng này để thắng ma sát tĩnh
+cả khi GUI/RTX đang tải GPU;
 lệnh zero vẫn được giữ nguyên nên watchdog luôn có quyền dừng robot.
 
 Isaac 5 báo thành phần twist của `IsaacComputeOdometry` không nhất quán với

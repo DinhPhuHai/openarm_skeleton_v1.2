@@ -23,7 +23,7 @@ import rclpy
 from rclpy.node import Node
 
 
-MIN_ANGULAR_SPEED = 0.15
+MIN_ANGULAR_SPEED = 0.25
 
 
 class IsaacCommandConditioner(Node):

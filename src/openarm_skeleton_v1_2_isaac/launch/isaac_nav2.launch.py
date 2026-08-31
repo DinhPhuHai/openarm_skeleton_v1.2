@@ -298,7 +298,10 @@ def _launch_setup(context):
         # Let SLAM lifecycle activation finish before the Nav2 lifecycle
         # manager starts issuing service calls on a CPU-loaded Isaac host.
         TimerAction(period=3.0, actions=[navigation]),
-        TimerAction(period=5.0, actions=[rviz]),
+        # Loading RViz while lifecycle services are configuring can starve
+        # their DDS responses on this 16 GB Isaac host. Open it only after
+        # Nav2 normally has enough time to become active.
+        TimerAction(period=15.0, actions=[rviz]),
     ]
 
     def _after_readiness(event, _context):

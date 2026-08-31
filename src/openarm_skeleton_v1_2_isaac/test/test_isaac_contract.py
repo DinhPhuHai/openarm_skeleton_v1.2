@@ -144,6 +144,7 @@ def test_launch_is_a_single_gated_isaac_nav2_entry_point():
     assert "navigation.launch.py" in source
     assert '"velocity_smoother_feedback": "OPEN_LOOP"' in source
     assert "TimerAction(period=3.0, actions=[navigation])" in source
+    assert "TimerAction(period=15.0, actions=[rviz])" in source
     assert "Isaac ROS contract passed; starting SLAM/Nav2." in source
     assert 'watchdog, "Base command watchdog"' in source
     assert 'environment.pop(name, None)' in source
@@ -179,7 +180,7 @@ def test_odometry_corrector_derives_planar_twist_from_pose():
 def test_command_conditioner_compensates_isaac_static_friction():
     source = COMMAND_CONDITIONER.read_text(encoding="utf-8")
     ast.parse(source)
-    assert "MIN_ANGULAR_SPEED = 0.15" in source
+    assert "MIN_ANGULAR_SPEED = 0.25" in source
     assert '"/cmd_vel_safe"' in source
     assert '"/isaac_cmd_vel"' in source
     assert "0.0 < abs(angular) < MIN_ANGULAR_SPEED" in source
