@@ -99,9 +99,14 @@ def prepare_urdf(source, mesh_directory, output):
         relative = Path(uri.removeprefix(PACKAGE_MESH_PREFIX))
         if relative.is_absolute() or ".." in relative.parts:
             raise ValueError(f"unsafe mesh URI: {uri}")
-        resolved = (mesh_directory / relative).resolve()
-        if not resolved.is_file() or mesh_directory not in resolved.parents:
-            raise FileNotFoundError(f"mesh asset not found: {resolved}")
+        candidate = mesh_directory / relative
+        if not candidate.is_file():
+            raise FileNotFoundError(f"mesh asset not found: {candidate}")
+        # colcon --symlink-install intentionally points installed mesh entries
+        # back to the source tree. The package URI and rejection of absolute /
+        # parent-relative paths above keep the lookup bounded, while resolving
+        # the final symlink gives Isaac an absolute path it can import.
+        resolved = candidate.resolve(strict=True)
         mesh.set("filename", str(resolved))
 
     # Isaac's URDF importer has changed its handling of massless frame-only

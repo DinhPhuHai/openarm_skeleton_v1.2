@@ -54,6 +54,9 @@ export ISAAC_SIM_PATH="$HOME/isaacsim"
 
 `check_isaac_host.sh` phải tìm thấy `python.sh`. Chạy `nvidia-smi` trong
 terminal desktop bình thường; nếu lệnh này lỗi ở đó thì sửa driver trước.
+Isaac Sim 5.x trên máy này phải dùng driver nhánh 580. Driver 595.84 đã được
+runtime-test và làm cả Isaac nguyên bản lẫn project segfault trong RTX renderer;
+host checker sẽ trả lỗi rõ ràng thay vì tiếp tục mở Kit.
 
 ## 3. Một launch chạy toàn bộ
 
@@ -147,6 +150,9 @@ ros2 run openarm_skeleton_v1_2_navigation check_nav2_goal.py
 - GUI đóng khi compile shader hoặc máy swap mạnh: đóng Gazebo/browser, thử
   `headless:=true use_rviz:=false`; giới hạn RAM 16 GB vẫn có thể làm runtime
   không ổn định.
+- Log có `cuDeviceGetUuid`, `librtx.scenedb.plugin.so` và exit 139: driver
+  595.x không tương thích với Isaac Sim 5.x/Kit 107 trên máy này. Chuyển về
+  nhánh NVIDIA 580, reboot, xác nhận `nvidia-smi`, rồi chạy lại host checker.
 - Không có topic ROS: bảo đảm mọi terminal dùng cùng `ROS_DOMAIN_ID`; không
   source workspace ROS bên trong một terminal dùng để chạy `python.sh` thủ công.
 - Cache/version conflict: dùng `./isaac-sim.sh --reset-user` hoặc

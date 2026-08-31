@@ -568,3 +568,45 @@ export ISAAC_SIM_PATH="$HOME/isaacsim"
 PASS cuối yêu cầu log `OPENARM ISAAC READY`, readiness checker PASS, robot
 render đúng, command thẳng/quay đúng dấu, watchdog dừng robot, SLAM map ổn
 định và `check_nav2_goal.py` thành công.
+
+### Isaac Sim 5.0 first native runtime — 2026-08-31
+
+Bundle standalone đã được tải, kiểm tra CRC và cài tại `/home/hai/isaacsim`.
+GPU runtime nhìn thấy RTX 4060 Laptop 8 GB, NVIDIA driver 595.84 và Vulkan.
+
+Lần chạy project đầu tiên phát hiện validator URDF từ chối nhầm mesh symlink
+của `colcon --symlink-install`. Validator đã được sửa để vẫn chặn URI tuyệt đối
+và `..`, nhưng chấp nhận package asset symlink hợp lệ; regression test mới tái
+tạo đúng install layout. Kết quả sau sửa:
+
+```text
+Isaac package contract: 7 passed
+Workspace aggregate: 37 tests, 0 errors, 0 failures, 0 skipped
+```
+
+Sau đó project đi qua bước mesh nhưng Isaac Kit segfault khi khởi tạo RTX:
+
+```text
+Warp CUDA error: Failed to get driver entry point 'cuDeviceGetUuid'
+Warp CUDA error 36: API call is not supported in the installed CUDA driver
+librtx.scenedb.plugin.so
+exit code 139 (SIGSEGV)
+```
+
+Để tách project khỏi nguyên nhân, Isaac nguyên bản cũng được chạy không ROS,
+factory reset, headless, single GPU và tắt driver-version verification:
+
+```bash
+cd /home/hai/isaacsim
+./isaac-sim.sh --no-window --reset-user \
+  --/renderer/multiGpu/enabled=false \
+  --/renderer/activeGpu=0 \
+  --/rtx/verifyDriverVersion/enabled=false
+```
+
+Kết quả vẫn cùng backtrace RTX và exit 139. Do đó blocker là NVIDIA 595.84
+không tương thích với Isaac Sim 5.x/Kit 107, không phải OpenArm, ROS, Nav2,
+IOMMU hay lựa chọn GUI/headless. NVIDIA support xác nhận chữ ký crash này với
+nhánh 595.x và khuyến nghị nhánh driver 580 đã validate. Project host checker
+giờ chặn driver >=595 trước khi mở Isaac. Full runtime vẫn **blocked** cho tới
+khi đổi về driver 580, reboot và chạy lại acceptance.

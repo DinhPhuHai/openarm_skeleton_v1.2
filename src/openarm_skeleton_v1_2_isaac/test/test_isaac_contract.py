@@ -19,6 +19,7 @@ SIMULATOR = PACKAGE / "scripts" / "openarm_isaac_sim.py"
 CHECKER = PACKAGE / "scripts" / "check_isaac_runtime.py"
 LAUNCH = PACKAGE / "launch" / "isaac_nav2.launch.py"
 RUNNER = WORKSPACE / "scripts" / "run_isaac_nav2.sh"
+HOST_CHECK = WORKSPACE / "scripts" / "check_isaac_host.sh"
 
 ACTIVE_BASE_JOINTS = {
     "caster_joint_1",
@@ -58,6 +59,22 @@ def test_prepared_urdf_is_isaac_only_and_portable(tmp_path):
         assert "package://" not in str(path)
     for name in ("base_footprint", "base_link", "base_scan"):
         assert root.find(f"./link[@name='{name}']/inertial") is not None
+
+
+def test_prepared_urdf_accepts_colcon_mesh_symlinks(tmp_path):
+    installed_meshes = tmp_path / "install" / "meshes"
+    installed_meshes.mkdir(parents=True)
+    for source_mesh in MESHES.iterdir():
+        if source_mesh.is_file():
+            (installed_meshes / source_mesh.name).symlink_to(source_mesh)
+
+    output = tmp_path / "openarm_from_install.urdf"
+    module = _load_prepare_module()
+    assert module.prepare_urdf(SOURCE_URDF, installed_meshes, output) == output
+    for mesh in ET.parse(output).getroot().findall(".//mesh"):
+        resolved = Path(mesh.get("filename"))
+        assert resolved.is_file()
+        assert MESHES in resolved.parents
 
 
 def test_simulator_uses_verified_ros_and_drive_contracts():
@@ -143,8 +160,14 @@ def test_public_runner_builds_and_launches_from_isaac_path():
     subprocess.run(["bash", "-n", RUNNER], check=True)
     assert "ISAAC_SIM_PATH" in source
     assert "build_workspace.sh" in source
+    assert "check_isaac_host.sh" in source
     assert "isaac_nav2.launch.py" in source
     assert "isaac_sim_path:=" in source
+
+    host_check = HOST_CHECK.read_text(encoding="utf-8")
+    subprocess.run(["bash", "-n", HOST_CHECK], check=True)
+    assert "driver_major >= 595" in host_check
+    assert "validated 580" in host_check
 
 
 def test_python_entry_points_compile_without_importing_isaac(tmp_path):

@@ -33,6 +33,9 @@ if [[ ! -f "$isaac_sim_path/python.sh" ]]; then
   exit 2
 fi
 
+export ISAAC_SIM_PATH="$isaac_sim_path"
+"$workspace_dir/scripts/check_isaac_host.sh"
+
 source /opt/ros/jazzy/setup.bash
 source "$install_setup"
 set -u
