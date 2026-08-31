@@ -17,6 +17,8 @@ MESHES = DESCRIPTION / "meshes"
 PREPARE = PACKAGE / "scripts" / "prepare_isaac_urdf.py"
 SIMULATOR = PACKAGE / "scripts" / "openarm_isaac_sim.py"
 CHECKER = PACKAGE / "scripts" / "check_isaac_runtime.py"
+COMMAND_CONDITIONER = PACKAGE / "scripts" / "condition_isaac_cmd_vel.py"
+ODOMETRY_CORRECTOR = PACKAGE / "scripts" / "correct_isaac_odometry.py"
 LAUNCH = PACKAGE / "launch" / "isaac_nav2.launch.py"
 RUNNER = WORKSPACE / "scripts" / "run_isaac_nav2.sh"
 HOST_CHECK = WORKSPACE / "scripts" / "check_isaac_host.sh"
@@ -80,17 +82,19 @@ def test_prepared_urdf_accepts_colcon_mesh_symlinks(tmp_path):
 def test_simulator_uses_verified_ros_and_drive_contracts():
     source = SIMULATOR.read_text(encoding="utf-8")
     ast.parse(source)
-    assert 'COMMAND_TOPIC = "cmd_vel_safe"' in source
+    assert 'COMMAND_TOPIC = "isaac_cmd_vel"' in source
     assert 'JOINT_STATE_TOPIC = "joint_states"' in source
-    assert 'ODOMETRY_TOPIC = "odom"' in source
+    assert 'ODOMETRY_TOPIC = "isaac_odom_raw"' in source
     assert 'SCAN_TOPIC = "scan"' in source
     assert 'BASE_FRAME = "base_footprint"' in source
     assert 'SCAN_FRAME = "base_scan"' in source
     assert 'WHEEL_JOINTS = ["drive_joint_1", "drive_joint_2"]' in source
     assert "PASSIVE_CASTER_JOINTS" in source
     assert "_configure_joint_drives(stage, UsdPhysics)" in source
-    assert "drive.GetDampingAttr().Set(10.0)" in source
-    assert "drive.GetMaxForceAttr().Set(30.0)" in source
+    assert "DRIVE_DAMPING = 1.0e5" in source
+    assert "DRIVE_MAX_FORCE = 30.0" in source
+    assert "drive.GetDampingAttr().Set(DRIVE_DAMPING)" in source
+    assert "drive.GetMaxForceAttr().Set(DRIVE_MAX_FORCE)" in source
     assert "WHEEL_RADIUS_METERS = 0.03810" in source
     assert "WHEEL_DISTANCE_METERS = 0.45" in source
     assert "ROS2SubscribeTwist" in source
@@ -130,12 +134,16 @@ def test_launch_is_a_single_gated_isaac_nav2_entry_point():
         "params_file",
     } <= declared
     assert "openarm_isaac_sim.py" in source
+    assert "correct_isaac_odometry.py" in source
+    assert "condition_isaac_cmd_vel.py" in source
     assert "check_isaac_runtime.py" in source
     assert "cmd_vel_watchdog.py" in source
     assert "robot_state_publisher" in source
     assert "slam_launch.py" in source
     assert "localization_launch.py" in source
     assert "navigation.launch.py" in source
+    assert '"velocity_smoother_feedback": "OPEN_LOOP"' in source
+    assert "TimerAction(period=3.0, actions=[navigation])" in source
     assert "Isaac ROS contract passed; starting SLAM/Nav2." in source
     assert 'watchdog, "Base command watchdog"' in source
     assert 'environment.pop(name, None)' in source
@@ -158,6 +166,25 @@ def test_runtime_checker_requires_topics_and_complete_tf_chain():
     assert "message.child_frame_id != \"base_footprint\"" in source
 
 
+def test_odometry_corrector_derives_planar_twist_from_pose():
+    source = ODOMETRY_CORRECTOR.read_text(encoding="utf-8")
+    ast.parse(source)
+    assert '"/isaac_odom_raw"' in source
+    assert '"/odom"' in source
+    assert "_wrapped_angle(yaw - previous_yaw) / elapsed" in source
+    assert "twist.linear.z = 0.0" in source
+    assert "twist.angular.z = angular_z" in source
+
+
+def test_command_conditioner_compensates_isaac_static_friction():
+    source = COMMAND_CONDITIONER.read_text(encoding="utf-8")
+    ast.parse(source)
+    assert "MIN_ANGULAR_SPEED = 0.15" in source
+    assert '"/cmd_vel_safe"' in source
+    assert '"/isaac_cmd_vel"' in source
+    assert "0.0 < abs(angular) < MIN_ANGULAR_SPEED" in source
+
+
 def test_public_runner_builds_and_launches_from_isaac_path():
     source = RUNNER.read_text(encoding="utf-8")
     assert RUNNER.stat().st_mode & 0o111
@@ -175,7 +202,14 @@ def test_public_runner_builds_and_launches_from_isaac_path():
 
 
 def test_python_entry_points_compile_without_importing_isaac(tmp_path):
-    for script in (PREPARE, SIMULATOR, CHECKER, LAUNCH):
+    for script in (
+        PREPARE,
+        SIMULATOR,
+        CHECKER,
+        COMMAND_CONDITIONER,
+        ODOMETRY_CORRECTOR,
+        LAUNCH,
+    ):
         subprocess.run(
             ["python3", "-m", "py_compile", str(script)],
             cwd=tmp_path,

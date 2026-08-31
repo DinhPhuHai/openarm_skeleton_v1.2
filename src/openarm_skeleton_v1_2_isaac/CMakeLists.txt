@@ -12,6 +12,8 @@ install(
 install(
   PROGRAMS
     scripts/check_isaac_runtime.py
+    scripts/condition_isaac_cmd_vel.py
+    scripts/correct_isaac_odometry.py
     scripts/openarm_isaac_sim.py
     scripts/prepare_isaac_urdf.py
   DESTINATION lib/${PROJECT_NAME}

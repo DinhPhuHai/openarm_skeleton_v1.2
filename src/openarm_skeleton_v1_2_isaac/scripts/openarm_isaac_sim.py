@@ -34,10 +34,12 @@ PASSIVE_CASTER_JOINTS = {
 }
 WHEEL_RADIUS_METERS = 0.03810
 WHEEL_DISTANCE_METERS = 0.45
+DRIVE_DAMPING = 1.0e5
+DRIVE_MAX_FORCE = 30.0
 LIDAR_HEIGHT_METERS = 0.3802
-COMMAND_TOPIC = "cmd_vel_safe"
+COMMAND_TOPIC = "isaac_cmd_vel"
 JOINT_STATE_TOPIC = "joint_states"
-ODOMETRY_TOPIC = "odom"
+ODOMETRY_TOPIC = "isaac_odom_raw"
 SCAN_TOPIC = "scan"
 ODOM_FRAME = "odom"
 BASE_FRAME = "base_footprint"
@@ -142,8 +144,13 @@ def _configure_joint_drives(stage, physics_schema):
         else:
             drive_found.add(name)
             drive.GetStiffnessAttr().Set(0.0)
-            drive.GetDampingAttr().Set(10.0)
-            drive.GetMaxForceAttr().Set(30.0)
+            # USD angular-drive damping is authored per degree. A value near
+            # the URDF importer's wheeled-robot defaults is needed for the
+            # controller's rad/s targets to have useful authority. The old
+            # value of 10 let both wheels stall around 0.2 rad/s while Nav2
+            # requested opposite velocities for a turn.
+            drive.GetDampingAttr().Set(DRIVE_DAMPING)
+            drive.GetMaxForceAttr().Set(DRIVE_MAX_FORCE)
     if caster_found != PASSIVE_CASTER_JOINTS:
         raise RuntimeError(
             "could not find all passive caster joints after URDF import: "

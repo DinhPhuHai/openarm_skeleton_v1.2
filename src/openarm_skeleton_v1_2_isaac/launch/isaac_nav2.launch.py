@@ -226,6 +226,18 @@ def _launch_setup(context):
             LaunchConfiguration("startup_timeout").perform(context),
         ],
     )
+    odometry_corrector = Node(
+        package="openarm_skeleton_v1_2_isaac",
+        executable="correct_isaac_odometry.py",
+        name="openarm_isaac_odometry_corrector",
+        output="screen",
+    )
+    command_conditioner = Node(
+        package="openarm_skeleton_v1_2_isaac",
+        executable="condition_isaac_cmd_vel.py",
+        name="openarm_isaac_command_conditioner",
+        output="screen",
+    )
 
     slam_localization = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -261,6 +273,10 @@ def _launch_setup(context):
             "use_sim_time": use_sim_time,
             "autostart": autostart,
             "params_file": params_file,
+            # Isaac's drive has static friction at very low commands, so
+            # closed-loop smoothing repeatedly resets at its first 0.05 rad/s
+            # step. The corrected /odom remains available to Nav2's controller.
+            "velocity_smoother_feedback": "OPEN_LOOP",
         }.items(),
     )
     rviz = Node(
@@ -279,8 +295,10 @@ def _launch_setup(context):
         LogInfo(msg="Isaac ROS contract passed; starting SLAM/Nav2."),
         slam_localization,
         map_localization,
-        navigation,
-        TimerAction(period=2.0, actions=[rviz]),
+        # Let SLAM lifecycle activation finish before the Nav2 lifecycle
+        # manager starts issuing service calls on a CPU-loaded Isaac host.
+        TimerAction(period=3.0, actions=[navigation]),
+        TimerAction(period=5.0, actions=[rviz]),
     ]
 
     def _after_readiness(event, _context):
@@ -301,11 +319,19 @@ def _launch_setup(context):
         [
             state_publisher,
             watchdog,
+            odometry_corrector,
+            command_conditioner,
             _shutdown_on_unexpected_exit(
                 state_publisher, "Robot state publisher"
             ),
             _shutdown_on_unexpected_exit(
                 watchdog, "Base command watchdog"
+            ),
+            _shutdown_on_unexpected_exit(
+                odometry_corrector, "Isaac odometry corrector"
+            ),
+            _shutdown_on_unexpected_exit(
+                command_conditioner, "Isaac command conditioner"
             ),
             RegisterEventHandler(
                 OnProcessExit(

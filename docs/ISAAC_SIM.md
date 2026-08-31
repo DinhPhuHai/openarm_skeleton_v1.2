@@ -82,7 +82,8 @@ Launch thực hiện theo thứ tự:
 
 1. chuẩn bị URDF Isaac từ base-demo đã kiểm chứng;
 2. mở scene nhẹ, robot và RTX lidar trong Isaac Sim;
-3. mở `robot_state_publisher` và watchdog;
+3. mở `robot_state_publisher`, watchdog, bộ bù ma sát bánh và bộ hiệu chỉnh
+   odometry phẳng;
 4. đợi `/clock`, `/scan`, `/odom`, `/joint_states` và TF đầy đủ;
 5. chỉ khi checker PASS mới khởi động SLAM Toolbox, Nav2 và RViz.
 
@@ -106,12 +107,13 @@ Localization bằng map đã lưu:
 ## 4. Hợp đồng ROS
 
 ```text
-Nav2 -> /cmd_vel_nav -> velocity_smoother -> /cmd_vel
-     -> wall-time watchdog (0.5 s) -> /cmd_vel_safe -> Isaac controller
+Nav2 -> /cmd_vel_nav -> velocity_smoother (Isaac: OPEN_LOOP) -> /cmd_vel
+     -> wall-time watchdog (0.5 s) -> /cmd_vel_safe
+     -> Isaac static-friction conditioner -> /isaac_cmd_vel -> controller
 
 Isaac -> /clock
 Isaac -> /scan             frame base_scan
-Isaac -> /odom             frame odom
+Isaac -> /isaac_odom_raw -> planar twist corrector -> /odom (frame odom)
 Isaac -> /joint_states
 Isaac -> odom -> base_footprint
 robot_state_publisher -> base_footprint -> base_link -> base_scan -> robot
@@ -119,7 +121,13 @@ robot_state_publisher -> base_footprint -> base_link -> base_scan -> robot
 
 Isaac không subscribe trực tiếp `/cmd_vel`. Nếu Nav2 hoặc teleop chết, watchdog
 vẫn phát zero sau 0,5 giây. Hai drive joint dùng bán kính bánh `0.03810 m`,
-khoảng cách bánh `0.45 m`; bốn caster joint được giữ passive.
+khoảng cách bánh `0.45 m`; bốn caster joint được giữ passive. Lệnh quay khác
+zero nhưng nhỏ hơn `0.15 rad/s` được nâng tới ngưỡng này để thắng ma sát tĩnh;
+lệnh zero vẫn được giữ nguyên nên watchdog luôn có quyền dừng robot.
+
+Isaac 5 báo thành phần twist của `IsaacComputeOdometry` không nhất quán với
+pose phẳng của robot này. Node hiệu chỉnh lấy đạo hàm pose theo simulation time,
+đổi vận tốc world sang frame `base_footprint` và xuất `/odom` chuẩn cho Nav2.
 
 ## 5. Kiểm tra độc lập
 
@@ -143,6 +151,14 @@ goal Nav2 trong vùng trống:
 
 ```bash
 ros2 run openarm_skeleton_v1_2_navigation check_nav2_goal.py
+```
+
+Để bắt buộc kiểm tra cả quay và đi ngang sang một vị trí khác, có thể gửi goal
+90 độ trong frame `odom`:
+
+```bash
+ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
+  "{pose: {header: {frame_id: odom}, pose: {position: {x: 0.0, y: 0.60}, orientation: {z: 0.70710678, w: 0.70710678}}}}"
 ```
 
 ## 6. Nếu không chạy được

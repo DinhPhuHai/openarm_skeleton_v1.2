@@ -670,3 +670,53 @@ Build: 4 packages finished
 Tests: 38 tests, 0 errors, 0 failures, 0 skipped
 Isaac contract: 8 passed
 ```
+
+### Isaac turning/Nav2 side-goal correction — 2026-08-31
+
+Kiểm tra bổ sung sau phản hồi robot chỉ tiến thẳng đã tìm thấy ba nguyên nhân
+riêng của runtime Isaac (Gazebo không bị ảnh hưởng):
+
+- `velocity_smoother` ở `CLOSED_LOOP` bị giữ tại bước đầu `0.05 rad/s` vì
+  twist do `IsaacComputeOdometry` báo sai trong khi pose vẫn đúng;
+- angular drive damping `10` quá nhỏ theo đơn vị drive USD, làm bánh chỉ đạt
+  khoảng `0.2 rad/s` và quay tại chỗ rất yếu;
+- khi đã gần goal, Regulated Pure Pursuit yêu cầu đúng `0.05 rad/s`, thấp hơn
+  ma sát tĩnh của mô hình nên không thể chỉnh nốt góc goal.
+
+Bản sửa giữ cấu hình Gazebo `CLOSED_LOOP`, nhưng launch Isaac override smoother
+sang `OPEN_LOOP`; tăng wheel-drive damping lên `1.0e5` với max force vẫn giới
+hạn ở `30`; đổi odometry gốc thành `/isaac_odom_raw` rồi suy ra planar twist từ
+pose/simulation time; và thêm conditioner sau watchdog để nâng lệnh quay khác
+zero lên tối thiểu `0.15 rad/s`. Zero không bị thay đổi nên timeout safety vẫn
+dừng robot. Navigation được trì hoãn 3 giây sau SLAM để tránh lifecycle service
+timeout khi CPU đang tải RTX.
+
+Runtime acceptance cuối chạy Isaac headless, Fast DDS domain 152. Goal buộc
+robot đổi hướng 90 độ rồi đi sang bên hông:
+
+```bash
+ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
+  "{pose: {header: {frame_id: odom}, pose: {position: {x: 0.0, y: 0.60}, orientation: {z: 0.70710678, w: 0.70710678}}}}"
+```
+
+Kết quả:
+
+```text
+Goal accepted with ID: b1ec38e9bb2841bfa78a9f8c97a09c90
+error_code: 0
+Goal finished with status: SUCCEEDED
+Final odom position: x=0.0081 m, y=0.6154 m
+Final orientation: z=0.7049, w=0.7093 (about 89.5 degrees)
+Position error: about 0.017 m; heading error: about 0.5 degrees
+/cmd_vel_safe after goal: all zero
+/isaac_cmd_vel after goal: all zero
+```
+
+Full regression sau correction:
+
+```text
+Build: 4 packages finished
+Tests: 40 tests, 0 errors, 0 failures, 0 skipped
+Navigation contract: 8 passed
+Isaac contract: 10 passed
+```
