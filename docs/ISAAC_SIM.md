@@ -1,11 +1,13 @@
 # Isaac Sim 5.0 + ROS 2 Jazzy — OpenArm Skeleton v1.2
 
-## Trạng thái máy đã kiểm tra ngày 2026-08-29
+## Trạng thái máy đã kiểm tra ngày 2026-08-31
 
 - Ubuntu 24.04.4 LTS và ROS 2 Jazzy: đúng nền tảng được NVIDIA hỗ trợ.
-- GPU NVIDIA GeForce RTX 4060 Laptop, kernel driver 595.84 đã được nạp.
+- GPU NVIDIA GeForce RTX 4060 Laptop, kernel driver 580.173.02 đã được nạp.
 - Khoảng 16 GB RAM, 4 GB swap và hơn 230 GB dung lượng trống.
-- Isaac Sim chưa tồn tại ở `~/isaacsim`, `~/Downloads`, `~/.local` hoặc `/opt`.
+- Isaac Sim 5.0 standalone đã cài tại `~/isaacsim`.
+- Factory headless smoke test, ROS 2 Jazzy bridge, SLAM/Nav2 lifecycle và goal
+  0,60 m đã PASS. Kết quả chi tiết nằm trong `docs/TEST_REPORT.md`.
 
 NVIDIA ghi mức RAM tối thiểu của Isaac Sim 5.0 là 32 GB và GPU tối thiểu là
 RTX 4080. Máy này thấp hơn mức chính thức dù trước đây đã từng chạy được 5.0.

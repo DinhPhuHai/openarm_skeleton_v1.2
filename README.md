@@ -208,9 +208,11 @@ từ Gazebo để tránh trường hợp odometry tự báo đúng nhưng chassi
 
 ## 6. Isaac Sim 5.0 + Nav2
 
-Máy đã được kiểm tra có Ubuntu 24.04, RTX 4060 Laptop và driver NVIDIA 595.84,
-nhưng hiện chưa cài Isaac Sim và RAM khoảng 16 GB thấp hơn mức tối thiểu 32 GB
-NVIDIA công bố. Package riêng dùng scene nhẹ và không thay đổi Gazebo stack.
+Máy đã được kiểm tra có Ubuntu 24.04, RTX 4060 Laptop, driver NVIDIA
+580.173.02 và Isaac Sim 5.0 tại `~/isaacsim`. RAM khoảng 16 GB thấp hơn mức
+tối thiểu 32 GB NVIDIA công bố, nên package dùng scene nhẹ và không thay đổi
+Gazebo stack. Headless runtime, ROS 2 Jazzy bridge, SLAM, Nav2 và goal 0,60 m
+đã PASS ngày 2026-08-31; xem `docs/TEST_REPORT.md`.
 
 Sau khi tải/cài Isaac Sim 5.0 standalone vào `~/isaacsim`:
 
@@ -234,10 +236,10 @@ colcon test --event-handlers console_direct+
 colcon test-result --verbose
 ```
 
-Kết quả regression mới nhất ngày 2026-08-29: 4 package build thành công, 36
-test, 0 lỗi. Isaac runtime chưa thể chạy vì máy chưa cài bundle; đây là
-**environment blocked**, không được ghi là runtime PASS. Gazebo/Nav2 runtime
-gần nhất vẫn PASS; xem chi tiết trong `docs/TEST_REPORT.md`.
+Kết quả regression mới nhất ngày 2026-08-31: 4 package build thành công, 38
+test, 0 lỗi. Isaac headless runtime và Nav2 goal cũng PASS với driver 580;
+Gazebo/Nav2 runtime gần nhất vẫn PASS. Xem chi tiết trong
+`docs/TEST_REPORT.md`.
 
 ## 8. Topic và frame contract
 

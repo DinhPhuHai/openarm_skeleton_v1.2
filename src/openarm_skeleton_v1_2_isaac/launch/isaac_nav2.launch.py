@@ -30,8 +30,8 @@ def _is_true(value):
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _isaac_environment():
-    """Use Isaac's Python 3.11 ROS libraries, not system Jazzy Python 3.12."""
+def _isaac_environment(isaac_sim_path):
+    """Use Isaac's bundled Jazzy/Python 3.11 ROS libraries."""
     environment = dict(os.environ)
     for name in (
         "AMENT_PREFIX_PATH",
@@ -45,13 +45,31 @@ def _isaac_environment():
     ):
         environment.pop(name, None)
     inherited_libraries = environment.get("LD_LIBRARY_PATH", "")
-    environment["LD_LIBRARY_PATH"] = os.pathsep.join(
+    retained_libraries = [
         entry
         for entry in inherited_libraries.split(os.pathsep)
         if entry
         and "/opt/ros/" not in entry
         and "/install/" not in entry
+    ]
+    bundled_ros_libraries = (
+        isaac_sim_path
+        / "exts"
+        / "isaacsim.ros2.bridge"
+        / "jazzy"
+        / "lib"
     )
+    if not bundled_ros_libraries.is_dir():
+        raise RuntimeError(
+            "Isaac Sim bundled Jazzy ROS libraries not found: "
+            f"{bundled_ros_libraries}"
+        )
+    environment["LD_LIBRARY_PATH"] = os.pathsep.join(
+        [str(bundled_ros_libraries), *retained_libraries]
+    )
+    environment["ROS_DISTRO"] = "jazzy"
+    environment["ROS_VERSION"] = "2"
+    environment["ROS_PYTHON_VERSION"] = "3"
     environment["RMW_IMPLEMENTATION"] = "rmw_fastrtps_cpp"
     return environment
 
@@ -151,7 +169,7 @@ def _launch_setup(context):
             cmd=command,
             output="screen",
             shell=False,
-            env=_isaac_environment(),
+            env=_isaac_environment(isaac_sim_path),
         )
         actions.extend(
             [

@@ -139,7 +139,11 @@ def test_launch_is_a_single_gated_isaac_nav2_entry_point():
     assert "Isaac ROS contract passed; starting SLAM/Nav2." in source
     assert 'watchdog, "Base command watchdog"' in source
     assert 'environment.pop(name, None)' in source
+    assert 'environment["ROS_DISTRO"] = "jazzy"' in source
     assert 'environment["RMW_IMPLEMENTATION"] = "rmw_fastrtps_cpp"' in source
+    assert '"isaacsim.ros2.bridge"' in source
+    assert '"jazzy"' in source
+    assert '"lib"' in source
 
 
 def test_runtime_checker_requires_topics_and_complete_tf_chain():
@@ -177,3 +181,9 @@ def test_python_entry_points_compile_without_importing_isaac(tmp_path):
             cwd=tmp_path,
             check=True,
         )
+
+
+def test_runtime_ready_and_error_markers_are_flushed_to_launch_log():
+    source = SIMULATOR.read_text(encoding="utf-8")
+    assert 'print("OPENARM ISAAC READY", flush=True)' in source
+    assert 'print(f"OPENARM ISAAC ERROR: {error}", flush=True)' in source

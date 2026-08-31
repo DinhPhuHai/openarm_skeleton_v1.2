@@ -610,3 +610,63 @@ IOMMU hay lựa chọn GUI/headless. NVIDIA support xác nhận chữ ký crash 
 nhánh 595.x và khuyến nghị nhánh driver 580 đã validate. Project host checker
 giờ chặn driver >=595 trước khi mở Isaac. Full runtime vẫn **blocked** cho tới
 khi đổi về driver 580, reboot và chạy lại acceptance.
+
+### Isaac Sim 5.0 driver 580 và Jazzy/Nav2 acceptance — 2026-08-31
+
+Sau khi đổi driver và reboot, kernel module, NVIDIA userspace libraries và GPU
+đều được xác nhận dùng cùng phiên bản `580.173.02`. `check_isaac_host.sh` PASS.
+Isaac factory headless chạy tới `app ready`, ổn định đủ 60 giây và chỉ dừng do
+timeout chủ động (`124`), không còn SIGSEGV/exit 139.
+
+Native runtime đầu tiên sau khi đổi driver phát hiện launch đã loại
+`ROS_DISTRO` nhưng chưa thêm đường dẫn ROS Jazzy nội bộ của Isaac. Bridge vì
+thế fallback Humble và không tìm thấy `librmw_fastrtps_cpp.so`. Launch đã được
+sửa để:
+
+- giữ ROS Jazzy hệ thống/Python 3.12 ngoài tiến trình simulator;
+- đặt `ROS_DISTRO=jazzy`, `RMW_IMPLEMENTATION=rmw_fastrtps_cpp` cho Isaac;
+- prepend `isaacsim.ros2.bridge/jazzy/lib` của bundle vào `LD_LIBRARY_PATH`;
+- báo lỗi ngay nếu bundle không có thư viện Jazzy;
+- flush marker `OPENARM ISAAC READY`/`ERROR` vào launch log.
+
+Runtime acceptance chạy trong domain Fast DDS hợp lệ, không giới hạn frame:
+
+```bash
+export ISAAC_SIM_PATH=/home/hai/isaacsim
+export ROS_DOMAIN_ID=143
+export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+./scripts/run_isaac_nav2.sh \
+  headless:=true use_rviz:=false max_frames:=0 startup_timeout:=300
+
+# Terminal thứ hai, cùng ROS_DOMAIN_ID
+ros2 run openarm_skeleton_v1_2_navigation check_nav2_goal.py \
+  --goal-distance 0.60 --min-motion 0.25 --goal-timeout 80
+```
+
+Kết quả:
+
+```text
+Driver: 580.173.02; RTX 4060 Laptop 8188 MiB
+Isaac ROS bridge: internal rclpy for ROS Distro jazzy loaded
+PASS: Isaac topics and TF contract are ready for SLAM/Nav2
+SLAM lifecycle: active; lidar registered
+Nav2 controller/planner/bt_navigator: active
+Local/global costmaps: active and publishing
+/scan: about 24 Hz
+Nav2: Goal succeeded
+PASS: action_status=4, goal_distance=0.600 m,
+      odom_motion=0.531 m, along_track=0.531 m,
+      cross_track=0.023 m, max_cross_track=0.050 m
+```
+
+Đây là headless runtime PASS cho driver, Isaac, robot import, ROS topic/TF,
+SLAM, costmaps và Nav2 movement. GUI rendering vẫn nên được người dùng quan
+sát trực tiếp khi chạy lệnh mặc định không có `headless:=true`.
+
+Full regression sau bản sửa:
+
+```text
+Build: 4 packages finished
+Tests: 38 tests, 0 errors, 0 failures, 0 skipped
+Isaac contract: 8 passed
+```

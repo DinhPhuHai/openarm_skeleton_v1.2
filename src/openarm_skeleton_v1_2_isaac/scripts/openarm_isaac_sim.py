@@ -420,11 +420,14 @@ def main():
 
         world.reset()
         world.play()
-        print("OPENARM ISAAC READY")
-        print(f"  articulation: {robot_path}")
-        print(f"  lidar: {lidar_path}")
-        print("  publishes: /clock /scan /odom /joint_states /tf")
-        print("  safe command input: /cmd_vel_safe")
+        print("OPENARM ISAAC READY", flush=True)
+        print(f"  articulation: {robot_path}", flush=True)
+        print(f"  lidar: {lidar_path}", flush=True)
+        print(
+            "  publishes: /clock /scan /odom /joint_states /tf",
+            flush=True,
+        )
+        print("  safe command input: /cmd_vel_safe", flush=True)
 
         frame = 0
         while simulation_app.is_running():
@@ -435,7 +438,7 @@ def main():
                 break
     except Exception as error:  # Isaac logs the detailed extension context.
         exit_code = 1
-        print(f"OPENARM ISAAC ERROR: {error}")
+        print(f"OPENARM ISAAC ERROR: {error}", flush=True)
         traceback.print_exc()
     finally:
         try:
