@@ -2,6 +2,7 @@
 
 import ast
 import importlib.util
+import math
 from pathlib import Path
 import subprocess
 import xml.etree.ElementTree as ET
@@ -16,6 +17,7 @@ SOURCE_URDF = (
 MESHES = DESCRIPTION / "meshes"
 PREPARE = PACKAGE / "scripts" / "prepare_isaac_urdf.py"
 SIMULATOR = PACKAGE / "scripts" / "openarm_isaac_sim.py"
+SCENES = PACKAGE / "scripts" / "isaac_scenes.py"
 CHECKER = PACKAGE / "scripts" / "check_isaac_runtime.py"
 COMMAND_CONDITIONER = PACKAGE / "scripts" / "condition_isaac_cmd_vel.py"
 ODOMETRY_CORRECTOR = PACKAGE / "scripts" / "correct_isaac_odometry.py"
@@ -35,6 +37,13 @@ ACTIVE_BASE_JOINTS = {
 
 def _load_prepare_module():
     spec = importlib.util.spec_from_file_location("prepare_isaac_urdf", PREPARE)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_scenes_module():
+    spec = importlib.util.spec_from_file_location("isaac_scenes", SCENES)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -110,6 +119,47 @@ def test_simulator_uses_verified_ros_and_drive_contracts():
     assert "gz::sim" not in source
 
 
+def test_hotel_and_restaurant_scenes_are_distinct_and_spawn_clear():
+    scenes = _load_scenes_module()
+    assert scenes.SCENE_NAMES == ("hotel", "restaurant")
+    assert set(scenes.SCENE_OBJECTS) == set(scenes.SCENE_NAMES)
+    assert len(scenes.get_scene_objects("hotel")) >= 14
+    assert len(scenes.get_scene_objects("restaurant")) >= 28
+
+    signatures = set()
+    for scene_name in scenes.SCENE_NAMES:
+        objects = scenes.get_scene_objects(scene_name)
+        names = [item["name"] for item in objects]
+        assert len(names) == len(set(names))
+        assert {
+            "north_wall",
+            "south_wall",
+            "east_wall",
+            "west_wall",
+        } <= set(names)
+        signatures.add(tuple(names))
+        for item in objects:
+            x, y, _z = item["position"]
+            width, depth, height = item["scale"]
+            assert min(width, depth, height) > 0.0
+            nearest_x = max(abs(x) - width / 2.0, 0.0)
+            nearest_y = max(abs(y) - depth / 2.0, 0.0)
+            assert math.hypot(nearest_x, nearest_y) >= (
+                scenes.ROBOT_SPAWN_CLEARANCE_METERS
+            )
+    assert len(signatures) == len(scenes.SCENE_NAMES)
+
+
+def test_simulator_selects_and_reports_requested_scene():
+    source = SIMULATOR.read_text(encoding="utf-8")
+    assert (
+        'parser.add_argument("--scene", choices=SCENE_NAMES, default="hotel")'
+        in source
+    )
+    assert "_create_scene(world, FixedCuboid, np, args.scene)" in source
+    assert 'print(f"  scene: {args.scene}", flush=True)' in source
+
+
 def test_launch_is_a_single_gated_isaac_nav2_entry_point():
     source = LAUNCH.read_text(encoding="utf-8")
     tree = ast.parse(source)
@@ -123,6 +173,7 @@ def test_launch_is_a_single_gated_isaac_nav2_entry_point():
     }
     assert {
         "start_isaac",
+        "scene",
         "isaac_sim_path",
         "headless",
         "startup_timeout",
@@ -134,6 +185,8 @@ def test_launch_is_a_single_gated_isaac_nav2_entry_point():
         "params_file",
     } <= declared
     assert "openarm_isaac_sim.py" in source
+    assert '"--scene"' in source
+    assert 'scene not in {"hotel", "restaurant"}' in source
     assert "correct_isaac_odometry.py" in source
     assert "condition_isaac_cmd_vel.py" in source
     assert "check_isaac_runtime.py" in source
@@ -175,6 +228,8 @@ def test_odometry_corrector_derives_planar_twist_from_pose():
     assert "_wrapped_angle(yaw - previous_yaw) / elapsed" in source
     assert "twist.linear.z = 0.0" in source
     assert "twist.angular.z = angular_z" in source
+    assert "except KeyboardInterrupt:" in source
+    assert "if rclpy.ok():" in source
 
 
 def test_command_conditioner_compensates_isaac_static_friction():
@@ -184,6 +239,8 @@ def test_command_conditioner_compensates_isaac_static_friction():
     assert '"/cmd_vel_safe"' in source
     assert '"/isaac_cmd_vel"' in source
     assert "0.0 < abs(angular) < MIN_ANGULAR_SPEED" in source
+    assert "except KeyboardInterrupt:" in source
+    assert "if rclpy.ok():" in source
 
 
 def test_public_runner_builds_and_launches_from_isaac_path():
@@ -205,6 +262,7 @@ def test_public_runner_builds_and_launches_from_isaac_path():
 def test_python_entry_points_compile_without_importing_isaac(tmp_path):
     for script in (
         PREPARE,
+        SCENES,
         SIMULATOR,
         CHECKER,
         COMMAND_CONDITIONER,

@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run OpenArm, a light test room, and ROS 2 bridges in Isaac Sim 5."""
+"""Run OpenArm, a selectable light scene, and ROS 2 bridges in Isaac Sim 5."""
 
 import argparse
 from pathlib import Path
@@ -22,6 +22,7 @@ import shutil
 import tempfile
 import traceback
 
+from isaac_scenes import SCENE_NAMES, get_scene_objects
 from prepare_isaac_urdf import prepare_urdf
 
 
@@ -52,6 +53,7 @@ def _arguments():
     parser.add_argument("--mesh-dir", required=True)
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--max-frames", type=int, default=0)
+    parser.add_argument("--scene", choices=SCENE_NAMES, default="hotel")
     parser.add_argument("--lidar-config", default="Example_Rotary_2D")
     parser.add_argument("--renderer", default="RayTracedLighting")
     args, _isaac_arguments = parser.parse_known_args()
@@ -163,27 +165,17 @@ def _configure_joint_drives(stage, physics_schema):
         )
 
 
-def _create_room(world, fixed_cuboid, np):
+def _create_scene(world, fixed_cuboid, np, scene_name):
     world.scene.add_default_ground_plane()
-    wall_color = np.array([0.72, 0.76, 0.80])
-    obstacle_color = np.array([0.18, 0.48, 0.70])
-    objects = [
-        ("north_wall", [0.0, 4.0, 0.5], [8.0, 0.15, 1.0], wall_color),
-        ("south_wall", [0.0, -4.0, 0.5], [8.0, 0.15, 1.0], wall_color),
-        ("east_wall", [4.0, 0.0, 0.5], [0.15, 8.0, 1.0], wall_color),
-        ("west_wall", [-4.0, 0.0, 0.5], [0.15, 8.0, 1.0], wall_color),
-        ("desk", [1.8, 1.4, 0.35], [1.4, 0.7, 0.7], obstacle_color),
-        ("bench", [-1.7, 1.0, 0.25], [0.6, 1.8, 0.5], obstacle_color),
-        ("column", [1.0, -1.8, 0.6], [0.5, 0.5, 1.2], obstacle_color),
-    ]
-    for name, position, scale, color in objects:
+    for item in get_scene_objects(scene_name):
+        name = item["name"]
         world.scene.add(
             fixed_cuboid(
-                prim_path=f"/World/openarm_room/{name}",
-                name=f"openarm_{name}",
-                position=np.array(position),
-                scale=np.array(scale),
-                color=color,
+                prim_path=f"/World/openarm_scene/{scene_name}/{name}",
+                name=f"openarm_{scene_name}_{name}",
+                position=np.array(item["position"]),
+                scale=np.array(item["scale"]),
+                color=np.array(item["color"]),
             )
         )
 
@@ -400,9 +392,11 @@ def main():
             physics_dt=1.0 / 60.0,
             rendering_dt=1.0 / 30.0,
         )
-        _create_room(world, FixedCuboid, np)
+        _create_scene(world, FixedCuboid, np, args.scene)
         stage = omni.usd.get_context().get_stage()
-        light = UsdLux.DomeLight.Define(stage, "/World/openarm_room/light")
+        light = UsdLux.DomeLight.Define(
+            stage, f"/World/openarm_scene/{args.scene}/light"
+        )
         light.CreateIntensityAttr(1000.0)
         robot_path = _import_robot(
             prepared_urdf,
@@ -428,6 +422,7 @@ def main():
         world.reset()
         world.play()
         print("OPENARM ISAAC READY", flush=True)
+        print(f"  scene: {args.scene}", flush=True)
         print(f"  articulation: {robot_path}", flush=True)
         print(f"  lidar: {lidar_path}", flush=True)
         print(

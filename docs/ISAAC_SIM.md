@@ -1,13 +1,14 @@
 # Isaac Sim 5.0 + ROS 2 Jazzy — OpenArm Skeleton v1.2
 
-## Trạng thái máy đã kiểm tra ngày 2026-08-31
+## Trạng thái máy đã kiểm tra ngày 2026-09-01
 
 - Ubuntu 24.04.4 LTS và ROS 2 Jazzy: đúng nền tảng được NVIDIA hỗ trợ.
 - GPU NVIDIA GeForce RTX 4060 Laptop, kernel driver 580.173.02 đã được nạp.
 - Khoảng 16 GB RAM, 4 GB swap và hơn 230 GB dung lượng trống.
 - Isaac Sim 5.0 standalone đã cài tại `~/isaacsim`.
 - Factory headless smoke test, ROS 2 Jazzy bridge, SLAM/Nav2 lifecycle và goal
-  0,60 m đã PASS. Kết quả chi tiết nằm trong `docs/TEST_REPORT.md`.
+  0,60 m đã PASS trong cả scene hotel và restaurant. Kết quả chi tiết nằm
+  trong `docs/TEST_REPORT.md`.
 
 NVIDIA ghi mức RAM tối thiểu của Isaac Sim 5.0 là 32 GB và GPU tối thiểu là
 RTX 4080. Máy này thấp hơn mức chính thức dù trước đây đã từng chạy được 5.0.
@@ -66,8 +67,20 @@ Lệnh khuyến nghị:
 
 ```bash
 export ISAAC_SIM_PATH="$HOME/isaacsim"
-./scripts/run_isaac_nav2.sh
+./scripts/run_isaac_nav2.sh scene:=hotel
 ```
+
+Scene nhà hàng:
+
+```bash
+./scripts/run_isaac_nav2.sh scene:=restaurant
+```
+
+`scene:=hotel` là mặc định. Hotel gồm sảnh lễ tân, sofa, bàn cà phê, vách hành
+lang, thang máy và xe hành lý. Restaurant có khu bếp/quầy phục vụ, bục đón
+khách và bốn cụm bàn ghế. Cả hai đều là scene primitive nhẹ có collision thật,
+được lidar nhìn thấy và có lối trống quanh vị trí spawn. Chúng không phải asset
+khách sạn/nhà hàng photorealistic.
 
 Wrapper trên gọi đúng một ROS launch:
 
@@ -96,15 +109,38 @@ một goal và chờ robot hoàn thành trước khi chọn goal tiếp theo.
 Headless:
 
 ```bash
-./scripts/run_isaac_nav2.sh headless:=true use_rviz:=false
+./scripts/run_isaac_nav2.sh \
+  scene:=hotel headless:=true use_rviz:=false
 ```
 
-Localization bằng map đã lưu:
+Trong chế độ mặc định `slam:=true`, RViz xây occupancy map từ `/scan`. Sau khi
+điều khiển robot quét đủ scene, lưu riêng từng map:
+
+```bash
+# Khi đang chạy scene:=hotel
+mkdir -p maps
+ros2 run nav2_map_server map_saver_cli \
+  -f "$(pwd)/maps/isaac_hotel"
+
+# Khi đang chạy scene:=restaurant
+ros2 run nav2_map_server map_saver_cli \
+  -f "$(pwd)/maps/isaac_restaurant"
+```
+
+Localization bằng đúng scene/map đã lưu:
 
 ```bash
 ./scripts/run_isaac_nav2.sh \
-  slam:=false map:="$(pwd)/maps/hotel.yaml"
+  scene:=hotel slam:=false \
+  map:="$(pwd)/maps/isaac_hotel.yaml"
+
+./scripts/run_isaac_nav2.sh \
+  scene:=restaurant slam:=false \
+  map:="$(pwd)/maps/isaac_restaurant.yaml"
 ```
+
+Không đổi `scene` trong khi launch đang chạy và không dùng chéo hai file map.
+Muốn chuyển scene, nhấn `Ctrl+C`, chờ Isaac đóng rồi chạy lệnh scene còn lại.
 
 ## 4. Hợp đồng ROS
 

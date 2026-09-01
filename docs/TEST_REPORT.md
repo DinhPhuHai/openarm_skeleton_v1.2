@@ -738,3 +738,66 @@ GUI retest sau phản hồi vận tốc quay vẫn stall:
 Log phiên lỗi cũng ghi nhiều `Received goal preemption request`: nhấn goal mới
 trước khi goal cũ hoàn thành sẽ chủ động hủy hướng cũ. Khi demo, chỉ gửi một
 goal và chờ trạng thái `SUCCEEDED` hoặc `FAILED` trước goal tiếp theo.
+
+### Isaac hotel/restaurant selectable scenes — 2026-09-01
+
+Isaac integration được mở rộng từ một room mẫu thành hai scene primitive nhẹ,
+chọn bằng launch argument `scene:=hotel` hoặc `scene:=restaurant`. Hotel có
+sảnh lễ tân, khu sofa, vách hành lang, thang máy và xe hành lý; restaurant có
+khu bếp/quầy phục vụ, bục đón khách và bốn cụm bàn ghế. Tất cả furniture đều
+có collision, nằm trong tầm quét lidar và giữ vùng spawn bán kính 0,90 m trống.
+
+Build và contract test ban đầu:
+
+```text
+Build: 4 packages finished
+Isaac contract: 12 passed
+isaac_nav2.launch.py --show-args: scene default hotel, choices documented
+```
+
+Hai runtime được chạy tuần tự, headless, mỗi runtime dùng ROS domain riêng để
+không lẫn discovery:
+
+```bash
+ROS_DOMAIN_ID=161 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
+  ./scripts/run_isaac_nav2.sh \
+  scene:=hotel headless:=true use_rviz:=false startup_timeout:=300
+
+ROS_DOMAIN_ID=162 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
+  ./scripts/run_isaac_nav2.sh \
+  scene:=restaurant headless:=true use_rviz:=false startup_timeout:=300
+```
+
+Trong từng domain đã chạy `check_isaac_runtime.py --timeout 30`, sau đó
+`check_nav2_goal.py --goal-distance 0.60 --min-motion 0.25 --goal-timeout 90`.
+Kết quả:
+
+```text
+Hotel:
+  Isaac topics + TF: PASS
+  Nav2 lifecycle + costmaps: active
+  Goal: SUCCEEDED; odom_motion=0.550 m; cross_track=-0.000 m
+
+Restaurant:
+  Isaac topics + TF: PASS
+  Nav2 lifecycle + costmaps: active
+  Goal: SUCCEEDED; odom_motion=0.542 m; cross_track=0.001 m
+```
+
+Acceptance này xác nhận scene được tạo thật trong Isaac, lidar/SLAM nhận vật
+cản và Nav2 điều khiển robot thành công ở cả hai bố trí. Occupancy map 2D vẫn
+là sản phẩm của SLAM; cần khám phá rồi lưu riêng thành `isaac_hotel.yaml` và
+`isaac_restaurant.yaml`, không dùng chéo giữa hai scene.
+
+Full regression cuối và kiểm tra shutdown:
+
+```text
+Build: 4 packages finished
+Tests: 42 tests, 0 errors, 0 failures, 0 skipped
+SIGINT command conditioner: exit 0
+SIGINT odometry corrector: exit 0
+```
+
+Hai node Python phụ trước đó có thể in traceback `rcl_shutdown already called`
+khi launch nhận `Ctrl+C`, dù runtime đã PASS. Cleanup giờ bắt
+`KeyboardInterrupt`, chỉ gọi shutdown khi context còn active và thoát sạch.

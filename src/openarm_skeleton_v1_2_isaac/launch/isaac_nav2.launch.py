@@ -109,6 +109,12 @@ def _launch_setup(context):
     start_isaac = _is_true(
         LaunchConfiguration("start_isaac").perform(context)
     )
+    scene = LaunchConfiguration("scene").perform(context).strip().lower()
+    if scene not in {"hotel", "restaurant"}:
+        raise RuntimeError(
+            f"Unknown Isaac scene {scene!r}; use scene:=hotel or "
+            "scene:=restaurant"
+        )
     headless = _is_true(LaunchConfiguration("headless").perform(context))
     slam = _is_true(LaunchConfiguration("slam").perform(context))
     map_path = LaunchConfiguration("map").perform(context).strip()
@@ -158,6 +164,8 @@ def _launch_setup(context):
             str(source_urdf),
             "--mesh-dir",
             str(mesh_directory),
+            "--scene",
+            scene,
             "--max-frames",
             LaunchConfiguration("max_frames").perform(context),
             "--lidar-config",
@@ -175,7 +183,8 @@ def _launch_setup(context):
             [
                 LogInfo(
                     msg=(
-                        "Starting the light OpenArm Isaac scene; Nav2 waits "
+                        f"Starting the light OpenArm Isaac {scene} scene; "
+                        "Nav2 waits "
                         "for /clock, /scan, /odom, /joint_states and TF."
                     )
                 ),
@@ -355,6 +364,11 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument("start_isaac", default_value="true"),
+            DeclareLaunchArgument(
+                "scene",
+                default_value="hotel",
+                description="Isaac environment: hotel or restaurant",
+            ),
             DeclareLaunchArgument(
                 "isaac_sim_path",
                 default_value=EnvironmentVariable(

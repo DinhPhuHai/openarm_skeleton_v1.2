@@ -219,12 +219,19 @@ Sau khi tải/cài Isaac Sim 5.0 standalone vào `~/isaacsim`:
 ```bash
 export ISAAC_SIM_PATH="$HOME/isaacsim"
 ./scripts/check_isaac_host.sh
-./scripts/run_isaac_nav2.sh
+./scripts/run_isaac_nav2.sh scene:=hotel
+```
+
+Project có hai môi trường Isaac nhẹ và độc lập. Chọn nhà hàng bằng:
+
+```bash
+./scripts/run_isaac_nav2.sh scene:=restaurant
 ```
 
 Đây là wrapper cho một launch duy nhất `isaac_nav2.launch.py`. Launch tự import
-robot, tạo room/lidar, mở watchdog, xác minh topic/TF rồi mới khởi động
-SLAM/Nav2/RViz. Xem hướng dẫn cài, test và troubleshooting đầy đủ tại
+robot, tạo scene/lidar, mở watchdog, xác minh topic/TF rồi mới khởi động
+SLAM/Nav2/RViz. `scene:=hotel` là mặc định. Không dùng occupancy map đã lưu của
+hotel cho restaurant hoặc ngược lại; cách tạo/lưu hai map SLAM nằm trong
 `docs/ISAAC_SIM.md`.
 
 ## 7. Kiểm thử
@@ -236,10 +243,10 @@ colcon test --event-handlers console_direct+
 colcon test-result --verbose
 ```
 
-Kết quả regression mới nhất ngày 2026-08-31: 4 package build thành công, 38
-test, 0 lỗi. Isaac headless runtime và Nav2 goal cũng PASS với driver 580;
-Gazebo/Nav2 runtime gần nhất vẫn PASS. Xem chi tiết trong
-`docs/TEST_REPORT.md`.
+Kết quả regression mới nhất ngày 2026-09-01: 4 package build thành công, 42
+test, 0 lỗi. Isaac headless runtime và Nav2 goal đều PASS trong hai scene
+hotel/restaurant với driver 580; Gazebo/Nav2 runtime gần nhất vẫn PASS. Xem chi
+tiết trong `docs/TEST_REPORT.md`.
 
 ## 8. Topic và frame contract
 

@@ -149,12 +149,20 @@ Sau khi cài bundle standalone vào `~/isaacsim`:
 ```bash
 export ISAAC_SIM_PATH="$HOME/isaacsim"
 ./scripts/check_isaac_host.sh
-./scripts/run_isaac_nav2.sh
+./scripts/run_isaac_nav2.sh scene:=hotel
+```
+
+Đổi sang môi trường nhà hàng:
+
+```bash
+./scripts/run_isaac_nav2.sh scene:=restaurant
 ```
 
 Launch tự chờ `/clock`, `/scan`, `/odom`, `/joint_states` và TF rồi mới bật
-SLAM/Nav2. Hướng dẫn cài và acceptance đầy đủ ở `docs/ISAAC_SIM.md`. Máy 16 GB
-RAM thấp hơn yêu cầu 32 GB của NVIDIA; nếu GUI thiếu bộ nhớ, thử:
+SLAM/Nav2. Hai scene dùng map SLAM riêng; không nạp `isaac_hotel.yaml` khi đang
+chạy restaurant. Hướng dẫn cài, lưu map và acceptance đầy đủ ở
+`docs/ISAAC_SIM.md`. Máy 16 GB RAM thấp hơn yêu cầu 32 GB của NVIDIA; nếu GUI
+thiếu bộ nhớ, thử:
 
 ```bash
 ./scripts/run_isaac_nav2.sh headless:=true use_rviz:=false

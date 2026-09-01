@@ -26,6 +26,8 @@
 - [ ] Không source một OpenArm workspace cũ trong cùng terminal.
 - [ ] Nếu dùng Isaac: cài 5.0, đặt `ISAAC_SIM_PATH`, chạy
   `check_isaac_runtime.py` và nhận PASS.
+- [ ] Chạy riêng `scene:=hotel` và `scene:=restaurant`; mỗi scene có `/scan`,
+  TF, SLAM/Nav2 active và hoàn thành ít nhất một goal trong vùng trống.
 
 ## Kết quả bàn giao chuẩn
 
